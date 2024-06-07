@@ -1,4 +1,8 @@
-# static-export-template
+# static-export
+
+This is my static dashboard [Dashboard html](https://filzahfiantama.github.io/JuliaStatic/)
+[Julia Tuts.jl](https://filzahfiantama.github.io/JuliaStatic/Julia%20Tuts.html)
+[reproducingPy.jl](https://filzahfiantama.github.io/JuliaStatic/reproducingPy.html)
 
 This is a demo repository containing two [Pluto](https://github.com/fonsp/Pluto.jl) notebooks that are **automatically converted to HTML** by a github action, and published to github pages! 🌝
 

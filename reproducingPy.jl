@@ -5,16 +5,16 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ e2c73a2b-df42-4c70-8355-8bdb1837d4ea
-using Plots, SpecialFunctions, CSV, DataFrames
+using Plots, SpecialFunctions, CSV, DataFrames, Statistics
+
+# ╔═╡ c2c2ddb8-f03c-4474-8ca9-fb93aba42867
+using Polynomials #for linear fitting
+
+# ╔═╡ d01ce88b-5ee2-4b2a-b105-ae5f43b0a309
+using LsqFit #Least Square Fit Library
 
 # ╔═╡ 26147bd9-edee-44c0-ab9c-d037e53560df
 using PlutoUI
-
-# ╔═╡ c2c2ddb8-f03c-4474-8ca9-fb93aba42867
-using Polynomials
-
-# ╔═╡ d01ce88b-5ee2-4b2a-b105-ae5f43b0a309
-using LsqFit
 
 # ╔═╡ 8cd3fd3d-aebf-4e37-aa3c-4b19a2ee88d9
 md"""
@@ -173,7 +173,7 @@ sum(arr)
 
 # ╔═╡ 5f83fc8b-cebb-4fa9-add2-9da51b035d38
 md"""
-*i can even pass a function to apply to the sum operation like absolute function !!!*
+*i can even pass a function to apply to the sum operation like absolute function:*
 """
 
 # ╔═╡ 69a95df6-b66e-439b-a2f4-6b8d9a2c8c04
@@ -254,7 +254,7 @@ gradtemp = (temp[end]-temp[1])/(depth[end]-depth[1]) #K/m
 
 # ╔═╡ c0bde8fb-6261-47a2-9d5e-c262b72019a6
 md"""
-The Average Geothermal Gradient over the defined borehole is $(round(gradtemp*1000,digits=2)) K/km
+The Average Geothermal Gradient over the defined borehole is $(round(gradtemp*1000,digits=2)) $$\frac{K}{km}$$
 """
 
 # ╔═╡ 42891481-d552-4d4f-a45e-fc5871b40f7d
@@ -401,10 +401,13 @@ md"""
 """
 
 # ╔═╡ 95470481-1c50-4baa-8bd9-d3d33d5a920e
+# ╠═╡ disabled = true
+#=╠═╡
 datapath = "D:/Edu/2324ws_Geothermische E-Systeme/from jupyterlab/"
+  ╠═╡ =#
 
 # ╔═╡ 0453118b-fab5-4411-8814-ffa3caa7a345
-cpdataName = datapath*"03_cp.dat"
+cpdataName = "03_cp.dat"
 
 # ╔═╡ a9806603-cd25-4ee9-b3db-e0062fa8a5e5
 cpdata = CSV.read(cpdataName, DataFrame)
@@ -495,7 +498,7 @@ begin
 		 xlabel="Temperature (°C)",
 		 ylabel="Heat Capacity (J/kgK)")
 	
-	plot!(cpdata."Temp[C]", cpLIn[0].+cpLIn[1].*cpdata."Temp[C]",
+	plot!(cpdata."Temp[C]", cpLIn.(cpdata."Temp[C]"),
 		  label="Linear Fit",
 		  line=("black",:dash))
 
@@ -512,7 +515,7 @@ md"""
 """
 
 # ╔═╡ 952d9b12-2438-4648-af72-e1af591dfd45
-TRTdata = CSV.read(datapath*"TRT_data.csv",DataFrame)
+TRTdata = CSV.read("TRT_data.csv",DataFrame)
 
 # ╔═╡ b8218a12-bbdd-42c8-aa0d-5d0debb0feae
 begin
@@ -522,27 +525,39 @@ begin
 	t = TRTdata."Time(min)"
 end
 
+# ╔═╡ aabb8b79-53e6-430c-a321-5d684d7687af
+md"""
+$T_{mean}=\frac{T_{down}+T_{up}}{2}$
+"""
+
 # ╔═╡ 9c7499b0-1195-46ad-a0fc-b6c507c1bb63
 Tmean = @. (T1+T2)/2
 
 # ╔═╡ cdb2cbe7-20b5-4d55-ad29-e8beade2a95b
 begin
-	plot(t, Tmean, label = "Tmean",
+	plot(t, T1, label = "Tdown", color = :red)
+	plot!(t, Tmean, label = "Tmean", color = :blue,
 		 xlabel = "Time(min)",
 		 ylabel = "Fluid Temperatures (°C)")
-	plot!(t, T1, label = "Tdown")
+	
 	plot!(t, T2, label = "Tup")
 end
 
 # ╔═╡ 8c091859-41d8-4a5f-9dba-c714d23b6bc9
 md"""
 ### Logarithmic scale
+
+If we now plot the same temperatures using a logarithmic scale in terms of time, we will be able to determine thermal conductivity $\lambda$ from the slope $m$ of the mean temperature then (see lecture):
+$$T_{mean}(t) =  {\color{red}m}\, \ln (t/t_0)+n$$
+
+with $${\color{red}m}=\frac{q_s}{4 \pi \lambda}$$
+
 Omitting the first entry of all variables, because  t=0 will generate error in log
 """
 
 # ╔═╡ 66dd88ab-bb62-4d35-8291-92313457ad6a
 begin
-	tlog = log.(t[2:end])
+	tlog = log.(t[2:end]) #t in [min]
 	T1log = T1[2:end]
 	T2log = T2[2:end]
 	Tmeanlog = Tmean[2:end]
@@ -550,16 +565,22 @@ end
 
 # ╔═╡ 193b6aa7-5660-4fbc-809f-eef12b3e6cc2
 begin
-	plot(tlog, Tmeanlog, label = "Tmean",
+	plot(tlog, T1log, label = "Tdown", color = :red)
+	plot!(tlog, Tmeanlog, label = "Tmean",
 		 xlabel = "ln(t/t0)",
-		 ylabel = "Fluid Temperatures (°C)")
-	plot!(tlog, T1log, label = "Tdown")
+		 ylabel = "Fluid Temperatures (°C)", color = :blue,)
+	
 	plot!(tlog, T2log, label = "Tup")
 end
 
 # ╔═╡ 346e24c4-e0ee-4dbc-8b25-3355c02847bf
 md"""
 ### Criterion with Fourier Number $F_o$
+Now we need to find a criterion to find a time instance after which the data is suitable for determining thermal conductivity after Kelvin's line source theory. As seen in the lecture, this corresponds to the so called **Fourier number** $Fo$:
+
+$$Fo=\frac{\kappa\, t}{r^2}$$
+
+Here you can use $\kappa=10^{-6}$ m s$^{-2}$ in order to find the time instance for which $Fo=20$. Then you should use only data from this time on. After assigning these values, it is possible to calculate thermal conductivity.
 """
 
 # ╔═╡ 4c88c53f-d1a4-4cd2-98c8-f3bf1124753e
@@ -569,13 +590,80 @@ kappa2 = 1e-6 # thermal diffusivity
 rb = .075 # borehole radius
 
 # ╔═╡ 5f3ba763-f3df-4378-a3c2-1531bd388c53
-tsec = t.*60
+tsec = t.*60 #t in [sec]
 
 # ╔═╡ 31580397-c6cc-4017-89ef-6c823768e689
-F0 = @. kappa*tsec/rb^2
+F0 = @. (kappa2*tsec)/(rb^2)
 
 # ╔═╡ ca92abea-8209-4fd3-be3f-822a4cb07cac
-F0[F0.<0.2]
+tlinear = t[F0.>20] #t in [min]
+
+# ╔═╡ c94d2b6a-e93f-489e-bd4b-9524fc8913d0
+T1linear = T1[F0.>20]
+
+# ╔═╡ cd00ea7e-06e7-413c-8074-727685930ce4
+T2linear = T2[F0.>20]
+
+# ╔═╡ 3fa0c803-02ec-418d-be23-08605695a7e9
+Tmeanlinear = Tmean[F0.>20]
+
+# ╔═╡ 7622486b-e244-4af7-a8aa-2485c473364b
+Plinear = P[F0.>20]
+
+# ╔═╡ 51701dce-4bd2-4214-a69b-2b4815457982
+md"""
+Logarithmic transformation
+"""
+
+# ╔═╡ 836765de-b4c3-4517-bdbb-1579a04db053
+tlinlog = log.(tlinear.*60) #t in [sec]
+
+# ╔═╡ 0c4c46c7-53ae-45c4-b47a-e6fdfdf4aca5
+Tfit = fit(tlinlog, Tmeanlinear , 1)
+
+# ╔═╡ 4e842872-798b-4354-a04c-20534a7ac819
+Tregressed = Tfit.(tlinlog)
+
+# ╔═╡ 00f428aa-6544-4a05-ac51-99ef26a2fdcb
+begin
+	plot(tlinlog, T1linear, label = "Tdown", color = :red)
+	plot!(tlinlog, Tmeanlinear, label = "Tmean", color = :blue,
+		 xlabel = "Time(min)",
+		 ylabel = "Fluid Temperatures (°C)")
+	plot!(tlinlog, T2linear, label = "Tup")
+	plot!(tlinlog, Tregressed, label = "linear fitted T", color=:black,
+		  line=(2,:dash))
+end
+
+# ╔═╡ 133a5a1c-913b-4f36-aeec-6d7cf486da4e
+md"""
+now determining ${\color{red}m}=\frac{q_s}{4 \pi \lambda}$ through fitting the semi-linear graph
+"""
+
+# ╔═╡ c5b4152f-8015-485f-8e5b-c9a429894e48
+m_Tfit = Tfit[1]
+
+# ╔═╡ a3b42bcf-6a23-44f0-a212-1f523e35b8b8
+md"""
+### Calculating Thermal Conductivity
+$${\lambda}=\frac{q_s}{4 \pi m}$$
+"""
+
+# ╔═╡ 1771f3df-be39-4c3b-995c-adf9a84ba178
+md"""
+qs is the power transferred to the ground per meter for the given depth of 100m
+"""
+
+# ╔═╡ a0e4ee09-5c49-4b52-8384-9f42aa8bbb9f
+qs = mean(Plinear)/100 
+
+# ╔═╡ 5d7dffb8-e936-49e8-98f6-0b2e39106fa2
+lambda2 = qs/(4*pi*m_Tfit)
+
+# ╔═╡ e557ea65-55cb-42de-927e-3e38bc07bb70
+md"""
+The calculated mean thermal conductivity is $(round(lambda2,digits=2)) $$\frac{W}{m \cdot K}$$
+"""
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -587,6 +675,7 @@ Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Polynomials = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 CSV = "~0.10.14"
@@ -602,9 +691,9 @@ SpecialFunctions = "~2.4.0"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.3"
+julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "6433e73fde37fde8238f8849aa6ccdd9189ec5c3"
+project_hash = "0c23a9144b31b6fcaeea05be538348512fe9a813"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -2049,6 +2138,8 @@ version = "1.4.1+1"
 # ╔═╡ Cell order:
 # ╟─8cd3fd3d-aebf-4e37-aa3c-4b19a2ee88d9
 # ╠═e2c73a2b-df42-4c70-8355-8bdb1837d4ea
+# ╠═c2c2ddb8-f03c-4474-8ca9-fb93aba42867
+# ╠═d01ce88b-5ee2-4b2a-b105-ae5f43b0a309
 # ╠═26147bd9-edee-44c0-ab9c-d037e53560df
 # ╟─2eda22ab-e839-4d76-88ae-0b2d5a9b6468
 # ╟─22efea9f-eba8-4bca-a443-3b836d12241e
@@ -2135,10 +2226,8 @@ version = "1.4.1+1"
 # ╠═9097da26-8b4e-4021-9849-c08e9debf064
 # ╠═d88f5663-c456-4b0c-b727-1a4dd9c7ba9e
 # ╟─11d2fddc-a3e1-444c-af6f-bb34d4324940
-# ╠═c2c2ddb8-f03c-4474-8ca9-fb93aba42867
 # ╠═640f04ae-ecdd-4d68-9153-b456271e5721
 # ╟─a3d27b72-b60f-437f-b7db-6fd423bc3905
-# ╠═d01ce88b-5ee2-4b2a-b105-ae5f43b0a309
 # ╟─a84ba2bd-2706-4efd-8981-20158319f042
 # ╠═dcd411d6-e903-4ce1-8818-ed542f70386d
 # ╟─4151d9c8-8918-4ec6-bda5-e57ac2937899
@@ -2154,6 +2243,7 @@ version = "1.4.1+1"
 # ╟─15111154-4604-4a2c-a3f8-6bcb0f9351ac
 # ╠═952d9b12-2438-4648-af72-e1af591dfd45
 # ╠═b8218a12-bbdd-42c8-aa0d-5d0debb0feae
+# ╟─aabb8b79-53e6-430c-a321-5d684d7687af
 # ╠═9c7499b0-1195-46ad-a0fc-b6c507c1bb63
 # ╠═cdb2cbe7-20b5-4d55-ad29-e8beade2a95b
 # ╟─8c091859-41d8-4a5f-9dba-c714d23b6bc9
@@ -2165,5 +2255,21 @@ version = "1.4.1+1"
 # ╠═5f3ba763-f3df-4378-a3c2-1531bd388c53
 # ╠═31580397-c6cc-4017-89ef-6c823768e689
 # ╠═ca92abea-8209-4fd3-be3f-822a4cb07cac
+# ╠═c94d2b6a-e93f-489e-bd4b-9524fc8913d0
+# ╠═cd00ea7e-06e7-413c-8074-727685930ce4
+# ╠═3fa0c803-02ec-418d-be23-08605695a7e9
+# ╠═7622486b-e244-4af7-a8aa-2485c473364b
+# ╟─51701dce-4bd2-4214-a69b-2b4815457982
+# ╠═836765de-b4c3-4517-bdbb-1579a04db053
+# ╠═0c4c46c7-53ae-45c4-b47a-e6fdfdf4aca5
+# ╠═4e842872-798b-4354-a04c-20534a7ac819
+# ╠═00f428aa-6544-4a05-ac51-99ef26a2fdcb
+# ╟─133a5a1c-913b-4f36-aeec-6d7cf486da4e
+# ╠═c5b4152f-8015-485f-8e5b-c9a429894e48
+# ╟─a3b42bcf-6a23-44f0-a212-1f523e35b8b8
+# ╟─1771f3df-be39-4c3b-995c-adf9a84ba178
+# ╠═a0e4ee09-5c49-4b52-8384-9f42aa8bbb9f
+# ╠═5d7dffb8-e936-49e8-98f6-0b2e39106fa2
+# ╟─e557ea65-55cb-42de-927e-3e38bc07bb70
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
